@@ -1,6 +1,0 @@
-[submodule "MyOverlay/include/llama.cpp"]
-	path = MyOverlay/include/llama.cpp
-	url = https://github.com/VaniaDinCahul/BestMinds2026
-[submodule "external/imgui"]
-	path = external/imgui
-	url = https://github.com/ocornut/imgui

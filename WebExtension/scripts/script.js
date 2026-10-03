@@ -15,7 +15,6 @@ async function scrapeArticle() {
             cleaned_text
         `);
 
-<<<<<<< HEAD
         console.log("--- Scraped Page Content ---");
         console.log(pageText);
 
@@ -26,7 +25,3 @@ async function scrapeArticle() {
 }
 
 scrapeArticle();
-=======
-    
-}
->>>>>>> 50bcc10 (a)

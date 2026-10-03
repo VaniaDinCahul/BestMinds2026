@@ -30,7 +30,7 @@ function parseModelJson(text) {
   return JSON.parse(text.slice(start, end + 1));
 }
 
-async function factCheck(pageText) {
+export async function factCheck(pageText) {
   try {
     const excerpt = pageText.slice(0, config.maxChars);
 

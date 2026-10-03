@@ -1,0 +1,13 @@
+{
+  "name": "AI Assistant Extension",
+  "description": "An friendly Ai assistant extension for your browser to read long articles and summarize them for you.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "host_permissions": [
+    "https://localhost:11434/*"
+  ],
+  "action": {
+    "default_popup": "popup/hello.html",
+    "default_icon": "img/icon.png"
+  }
+}

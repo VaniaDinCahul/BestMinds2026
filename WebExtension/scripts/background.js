@@ -1,3 +1,5 @@
+import {factCheck} from "./fact_checker.js";
+
 function extractText() {
     if (!document.body) return "";
 
@@ -37,26 +39,34 @@ async function scrapeTab(tabId, tab) {
 }
 
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
-lastPageID = null;
-count = 0;
+let lastPageID = null;
+let count = 0;
 
 extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab && tab.url) {
         console.log(tabId, tab.url);
-        lastPageID = tabId;
 
         if (tabId != lastPageID) {
             lastPageID = tabId;
             count = 0;
         }
 
-        if (count < 2) {
+        if (count < 1) {
             count++;
             const text = await scrapeTab(tabId, tab);
         
         if (text) {
             console.log("len:", text.length);
-            console.log(text.substring(0, 150));
+            factCheck(text).then(result => {
+                if (result) {
+                    console.log("Fact-check result:", result);
+                } else {
+                    console.log("Fact-check failed or returned null.");
+                }
+            }).catch(err => {
+                console.error("Error during fact-checking:", err);
+            });
+
         } else {
             console.log("0 text");
         }

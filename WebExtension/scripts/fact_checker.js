@@ -1,13 +1,19 @@
-const config = require('./env.json');
-
+async function getConfig() {
+    const api = typeof browser !== "undefined" ? browser : chrome;
+    const url = api.runtime.getURL('env.json'); // Ensure env.json path is relative to manifest.json
+    const res = await fetch(url);
+    return await res.json();
+}
+// ${config.trustedSites.join(", ")}
 function buildPrompt(excerpt) {
+  let config = getConfig();
   return `You are a fact-checking assistant. Analyze the TEXT below.
 
 Steps:
 1. Pick the 2-3 key claims and the main keywords.
 2. If the text mentions a date for the events, search for articles from around that date using the keywords. If it 
 contains no date, search by keywords only.
-3. Use Google Search restricted to these trusted sites: ${config.trustedSites.join(", ")}.
+3. Use Google Search restricted to these trusted sites..
    Consult at most ${config.maxSitesToCheck} of them, choosing the most relevant. Do not visit others.
 4. Judge how well the trusted sources support the claims.
 
@@ -31,6 +37,7 @@ function parseModelJson(text) {
 }
 
 export async function factCheck(pageText) {
+  let config = await getConfig();
   try {
     const excerpt = pageText.slice(0, config.maxChars);
 
@@ -44,12 +51,12 @@ export async function factCheck(pageText) {
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: buildPrompt(excerpt) }] }],
-          tools: [{ google_search: {} }],
+          tools: [],
         }),
-      }
+      } 
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-
+// { google_search: {} }
     const data = await res.json();
     const candidate = data.candidates?.[0];
     const text = candidate?.content?.parts?.map(p => p.text).join("") ?? "";

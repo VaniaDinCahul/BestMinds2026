@@ -1,5 +1,8 @@
+// import fact checker
 import {factCheck} from "./fact_checker.js";
+import { extractMainText } from "./scraper.js";
 
+// daca nu este gol atunci continua și copie pagina și scoate tot ce este nenecesar
 function extractText() {
     if (!document.body) return "";
 
@@ -12,12 +15,14 @@ function extractText() {
     return clone.innerText || clone.textContent || "";
 }
 
+//  verifică dacă pagina este validă și dacă nu este o pagină de extensie sau de browser, apoi extrage textul și îl trimite la fact checker
 async function scrapeTab(tabId, tab) {
     if (!tab.url || 
         tab.url.startsWith("chrome://") || 
         tab.url.startsWith("chrome-extension://") || 
         tab.url.startsWith("moz-extension://") || 
-        tab.url.startsWith("about:")) {
+        tab.url.startsWith("about:") ||
+        tab.url.startsWith("www.google.com/search")) {
         return null;
     }
 
@@ -38,20 +43,23 @@ async function scrapeTab(tabId, tab) {
     }
 }
 
+// ppentru a functiona si pe chrome și pe firefox, folosim api-ul corespunzator
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
-let lastPageID = null;
+let lasturl = null;
 let count = 0;
 
+// la fiecare schimbare de url verifică dacă a fost analziat și dacă nu a fost, atunci analizează-l
 extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab && tab.url) {
         console.log(tabId, tab.url);
 
-        if (tabId != lastPageID) {
-            lastPageID = tabId;
+        if (tab.url != lasturl) {
+            lasturl = tab.url;
             count = 0;
+            console.log("New page detected, resetting count.");
         }
 
-        if (count < 1) {
+        if (count < 2) {
             count++;
             const text = await scrapeTab(tabId, tab);
         
@@ -73,3 +81,10 @@ extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         }
     }
 });
+
+
+// extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+//     if (changeInfo.status === 'complete' && tab && tab.url) {
+//         extractMainText()
+//     }
+// });

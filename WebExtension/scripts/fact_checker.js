@@ -16,11 +16,13 @@ contains no date, search by keywords only.
 3. Use Google Search restricted to these trusted sites..
    Consult at most ${config.maxSitesToCheck} of them, choosing the most relevant. Do not visit others.
 4. Judge how well the trusted sources support the claims.
+5. Mention the most up to date inforamation you have on the matter.
+6. Do not make up information. If you cannot find relevant coverage on the trusted sites, set truth_percentage to null and say so in the reasoning.
 
 Reply with ONLY a JSON object, no other text, no markdown:
 {
   "truth_percentage": <integer 0-100, how likely the claims are true>,
-  "reasoning": "<1-2 short sentences>",
+  "reasoning": "<1-5 short sentences>",
   "date_used": "<date found in text, or null>"
 }
 If you cannot find relevant coverage on the trusted sites, set truth_percentage to null and say so in the reasoning.

@@ -1,0 +1,3 @@
+[submodule "MyOverlay/include/llama.cpp"]
+	path = MyOverlay/include/llama.cpp
+	url = https://github.com/VaniaDinCahul/BestMinds2026

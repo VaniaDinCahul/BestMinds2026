@@ -1,16 +1,24 @@
 {
-  "name": "AI Assistant Extension",
-  "description": "An friendly Ai assistant extension for your browser to read long articles and summarize them for you.",
-  "version": "1.0",
   "manifest_version": 3,
+  "name": "AI Assistant Extension",
+  "description": "A friendly AI assistant extension for your browser to read long articles and summarize them for you.",
+  "version": "1.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ai-assistant@local.addon"
+    }
+  },
   "host_permissions": [
-    "https://localhost:11434/*"
+    "<all_urls>"
   ],
   "permissions": [
-    "activeTab",
     "scripting",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
+  "background": {
+    "scripts": ["scripts/background.js"]
+  },
   "action": {
     "default_popup": "popup/hello.html",
     "default_icon": "img/icon.png"

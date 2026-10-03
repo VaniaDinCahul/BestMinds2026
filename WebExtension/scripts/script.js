@@ -1,9 +1,27 @@
-import { pyodide } from "./pyodide.js";
+import { loadPyodide } from "pyodide";
 
-async function loadPyodideAndPackages() {
-  let pyodide = await loadPyodide();
+console.log("Starting the scraping process...");
+async function scrapeArticle() {
+    try {
+        console.log("Loading Pyodide...");
+        let pyodide = await loadPyodide();
+        console.log("Pyodide loaded successfully!");
 
-  await pyodide.runPyodide(`
-    import`)
+        let pageText = await pyodide.runPythonAsync(`
+            import js
+            body_text = js.document.body.innerText
+            cleaned_text = "\\n".join([line.strip() for line in body_text.splitlines() if line.strip()])
+        
+            cleaned_text
+        `);
 
+        console.log("--- Scraped Page Content ---");
+        console.log(pageText);
+
+        return pageText;
+    } catch (error) {
+        console.error("Error occurred during Pyodide execution:", error);
+    }
 }
+
+scrapeArticle();

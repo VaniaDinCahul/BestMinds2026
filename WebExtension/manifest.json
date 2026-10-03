@@ -6,6 +6,11 @@
   "host_permissions": [
     "https://localhost:11434/*"
   ],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
   "action": {
     "default_popup": "popup/hello.html",
     "default_icon": "img/icon.png"

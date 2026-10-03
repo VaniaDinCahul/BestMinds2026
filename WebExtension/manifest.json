@@ -20,7 +20,7 @@
     "scripts": ["scripts/background.js"]
   },
   "action": {
-    "default_popup": "popup/hello.html",
+    "default_popup": "popup.html",
     "default_icon": "img/icon.png"
   }
 }

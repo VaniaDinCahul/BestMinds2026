@@ -92,8 +92,9 @@ extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             console.log("New page detected, resetting count.");
         }
 
-        if (count < 2) {
+        if (count < 1) {
             count++;
+            console.log(count)
             const text = await scrapeTab(tabId, tab);
 
             if (text) {

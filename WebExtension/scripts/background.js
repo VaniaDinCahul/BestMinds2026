@@ -1,5 +1,4 @@
 import { factCheck } from "./fact_checker.js";
-import { extractMainText } from "./scraper.js";
 
 // Clean and extract visible text from the page DOM
 function extractText() {
@@ -99,19 +98,38 @@ extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
             if (text) {
                 console.log("Extracted text length:", text.length);
-                factCheck(text)
-                    .then(result => {
-                        if (result) {
-                            console.log("Fact-check result:", result);
-                        } else {
-                            console.log("Fact-check failed or returned null.");
+                factCheck(text).then(result => {
+                    console.log("Fact-check result:", result);
+                    if (!result) return;
+
+                    // truth_percentage -> color
+                    const p = result.truth_percentage;
+                    let status = "yellow";                 // null / unknown
+                    if (typeof p === "number") {
+                        if (p >= 75) status = "green";
+                        else if (p <= 40) status = "red";
+                    }
+
+                    // sources: array -> { name: url }
+                    const sources = {};
+                    (result.sources || []).forEach((s, i) => {
+                        if (typeof s === "string") {
+                            try { sources[new URL(s).hostname] = s; } catch { sources[`Sursa ${i + 1}`] = s; }
+                        } else if (s && s.url) {
+                            sources[s.name || s.title || new URL(s.url).hostname] = s.url;
                         }
-                    })
-                    .catch(err => {
-                        console.error("Error during fact-checking:", err);
                     });
-            } else {
-                console.log("Extracted text is empty.");
+
+                    const pct = typeof p === "number" ? `${p}%` : "necunoscut";
+                    const verdictText = `Procent de adevăr: ${pct}. ${result.reasoning || ""}`;
+
+                    return extensionApi.tabs.sendMessage(tabId, {
+                        action: "SHOW_FACT_CHECK_RESULT",
+                        payload: { status, verdictText, sources }
+                    });
+                }).catch(err => {
+                    console.error("Fact-check / sendMessage failed:", err);
+                });
             }
         }
     }

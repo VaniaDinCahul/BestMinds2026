@@ -75,63 +75,102 @@ async function scrapeTab(tabId, tab) {
     }
 }
 
-// Browser extension listener
+// ---------- Browser extension listener ----------
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
-let lastUrl = null;
-let count = 0;
+const DWELL_MS = 10000;               // how long the user must stay on the page
+const handledUrls = new Map();        // tabId -> last URL handled
+
+// Keeps the service worker alive while we wait (Chrome kills idle workers after ~30s)
+async function withKeepAlive(fn) {
+    const timer = setInterval(() => extensionApi.runtime.getPlatformInfo(), 20000);
+    try {
+        return await fn();
+    } finally {
+        clearInterval(timer);
+    }
+}
+
+// Sends a message to the page; injects the content script if it isn't there yet
+async function sendToTab(tabId, payload) {
+    const msg = { action: "SHOW_FACT_CHECK_RESULT", payload };
+    try {
+        await extensionApi.tabs.sendMessage(tabId, msg);
+    } catch {
+        await extensionApi.scripting.insertCSS({ target: { tabId }, files: ["frontai/styles.css"] });
+        await extensionApi.scripting.executeScript({ target: { tabId }, files: ["frontai/result.js"] });
+        await extensionApi.tabs.sendMessage(tabId, msg);
+    }
+}
+
+// Converts your factCheck() result into what result.js expects
+function toPayload(result) {
+    const p = result.truth_percentage;
+    let status = "yellow";
+    if (typeof p === "number") {
+        if (p >= 75) status = "green";
+        else if (p <= 40) status = "red";
+    }
+
+    const sources = {};
+    (result.sources || []).forEach((s, i) => {
+        if (typeof s === "string") {
+            try { sources[new URL(s).hostname] = s; } catch { sources[`Sursa ${i + 1}`] = s; }
+        } else if (s && s.url) {
+            sources[s.name || s.title || new URL(s.url).hostname] = s.url;
+        }
+    });
+
+    const pct = typeof p === "number" ? `${p}%` : "necunoscut";
+    return { status, verdictText: `Procent de adevăr: ${pct}. ${result.reasoning || ""}`, sources };
+}
 
 extensionApi.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab && tab.url) {
-        if (isIgnoredUrl(tab.url)) return;
+    if (changeInfo.status !== "complete" || !tab?.url) return;
+    if (isIgnoredUrl(tab.url)) return;
+    if (handledUrls.get(tabId) === tab.url) return;   // already handled this page
+    handledUrls.set(tabId, tab.url);
 
-        console.log(tabId, tab.url);
+    const startUrl = tab.url;
+    console.log("Page detected:", tabId, startUrl);
 
-        if (tab.url !== lastUrl) {
-            lastUrl = tab.url;
-            count = 0;
-            console.log("New page detected, resetting count.");
-        }
+    try {
+        await withKeepAlive(async () => {
+            // 1) instant gray dot so the user sees the extension is working
+            await sendToTab(tabId, { status: "loading", verdictText: "Se verifică pagina...", sources: {} });
 
-        if (count < 1) {
-            count++;
-            console.log(count)
-            const text = await scrapeTab(tabId, tab);
+            // 2) dwell time
+            await new Promise(r => setTimeout(r, DWELL_MS));
 
-            if (text) {
-                console.log("Extracted text length:", text.length);
-                factCheck(text).then(result => {
-                    console.log("Fact-check result:", result);
-                    if (!result) return;
-
-                    // truth_percentage -> color
-                    const p = result.truth_percentage;
-                    let status = "yellow";                 // null / unknown
-                    if (typeof p === "number") {
-                        if (p >= 75) status = "green";
-                        else if (p <= 40) status = "red";
-                    }
-
-                    // sources: array -> { name: url }
-                    const sources = {};
-                    (result.sources || []).forEach((s, i) => {
-                        if (typeof s === "string") {
-                            try { sources[new URL(s).hostname] = s; } catch { sources[`Sursa ${i + 1}`] = s; }
-                        } else if (s && s.url) {
-                            sources[s.name || s.title || new URL(s.url).hostname] = s.url;
-                        }
-                    });
-
-                    const pct = typeof p === "number" ? `${p}%` : "necunoscut";
-                    const verdictText = `Procent de adevăr: ${pct}. ${result.reasoning || ""}`;
-
-                    return extensionApi.tabs.sendMessage(tabId, {
-                        action: "SHOW_FACT_CHECK_RESULT",
-                        payload: { status, verdictText, sources }
-                    });
-                }).catch(err => {
-                    console.error("Fact-check / sendMessage failed:", err);
-                });
+            // 3) user left the page during the wait? stop
+            const current = await extensionApi.tabs.get(tabId);
+            if (current.url !== startUrl) {
+                console.log("User left the page, skipping.");
+                return;
             }
-        }
+
+            // 4) scrape + fact-check
+            const text = await scrapeTab(tabId, current);
+            if (!text) return;
+            console.log("Extracted text length:", text.length);
+
+            const result = await factCheck(text);
+            console.log("Fact-check result:", result);
+
+            if (!result) {
+                await sendToTab(tabId, {
+                    status: "yellow",
+                    verdictText: "Verificarea a eșuat (serviciul AI este ocupat). Reîncarcă pagina pentru a reîncerca.",
+                    sources: {}
+                });
+                return;
+            }
+
+            // 5) show the real result
+            await sendToTab(tabId, toPayload(result));
+        });
+    } catch (err) {
+        console.error("Fact-check flow failed:", err);
     }
 });
+
+extensionApi.tabs.onRemoved.addListener(tabId => handledUrls.delete(tabId));

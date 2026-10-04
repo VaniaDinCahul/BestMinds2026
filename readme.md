@@ -8,3 +8,8 @@ Cons:
     > High resource usage.
 
 Web Extension
+
+# DomNode
+# DomParser
+# server
+# service worker
